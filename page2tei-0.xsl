@@ -5,7 +5,8 @@
   xmlns:xs="http://www.w3.org/2001/XMLSchema"
   xmlns:xd="http://www.oxygenxml.com/ns/doc/xsl"
   xmlns:tei="http://www.tei-c.org/ns/1.0"
-  xmlns:p="http://schema.primaresearch.org/PAGE/gts/pagecontent/2017-07-15"
+  xmlns:p2017="http://schema.primaresearch.org/PAGE/gts/pagecontent/2017-07-15"
+  xmlns:p2019="http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15"
   xmlns:mets="http://www.loc.gov/METS/"
   xmlns:xlink="http://www.w3.org/1999/xlink"
   xmlns:map="http://www.w3.org/2005/xpath-functions/map"
@@ -67,10 +68,30 @@
   <!-- use an external file with metadata about the documents -->
   <xsl:variable name="metadaten" select="doc('./metadaten_semantic.xml')"/>
   <xsl:variable name="meta">
-    <xsl:variable name="identifier" select="reverse(tokenize(base-uri(.), '/'))[4]"/>   <!-- our document identifiers are in an ancestor path component -->
-    <xsl:variable name="docnumber" select="tokenize($identifier, '_')[1]"/>             <!-- ... and even that we have to parse! -->
+    <xsl:variable name="identifier"><!-- our document identifiers are in an ancestor path component, and the depth differs depending on the OCR4all version -->
+      <xsl:variable name="v1" select="reverse(tokenize(base-uri(.), '/'))[4]"/>
+      <xsl:variable name="v2" select="reverse(tokenize(base-uri(.), '/'))[5]"/>
+      <xsl:choose>
+        <xsl:when test="matches(substring($v1,1,5), '\d{5}')"><!-- we are at the correct depth if the first 5 characters of the path component are all digits -->
+          <xsl:value-of select="$v1"/>
+        </xsl:when>
+        <xsl:when test="matches(substring($v2,1,5), '\d{5}')">
+          <xsl:value-of select="$v2"/>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:message terminate="yes" select="concat('Cannot find identifier for current document ', base-uri(.), '. Exiting.')"/>
+        </xsl:otherwise>
+      </xsl:choose>      
+    </xsl:variable>   <xsl:variable name="docnumber" select="tokenize($identifier, '_')[1]"/><!-- ... and even that we have to parse! -->
     <xsl:message select="concat('Processing document ', $docnumber, '...')"/>
-    <xsl:copy-of select="$metadaten//*:dokument[@nr eq $docnumber]"/>
+    <xsl:choose>
+      <xsl:when test="$metadaten//*:dokument[@nr eq $docnumber]/kurztitel">
+        <xsl:copy-of select="$metadaten//*:dokument[@nr eq $docnumber]"/>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:message terminate="yes" select="concat('Cannot find metadata for document ', $docnumber, '. Exiting.')"/>
+      </xsl:otherwise>
+    </xsl:choose>
   </xsl:variable>
 
   <xsl:variable name="classifications" select="doc('./taxonomy.xml')"/>
@@ -103,16 +124,16 @@
     <teiHeader>
         <fileDesc>
             <titleStmt><xsl:choose><xsl:when test="./local-name() eq 'mets'">
-               <xsl:apply-templates select="mets:amdSec//trpDocMetadata/title | p:Metadata/p:Title" />
-               <xsl:apply-templates select="mets:amdSec//trpDocMetadata/author | p:Metadata/p:Creator" />
+               <xsl:apply-templates select="mets:amdSec//trpDocMetadata/title | p2017:Metadata/p2017:Title | p2019:Metadata/p2019:Title" />
+               <xsl:apply-templates select="mets:amdSec//trpDocMetadata/author | p2017:Metadata/p2017:Creator | p2019:Metadata/p2019:Creator" />
                <xsl:apply-templates select="mets:amdSec//trpDocMetadata/uploader" />
             </xsl:when><xsl:when test="$meta"><xsl:message select="concat('Kurztitel: ', $meta//*:kurztitel)"/>
                 <title type="short"><xsl:value-of select="$meta//*:kurztitel/string()"/></title>
                 <title type="main"><xsl:value-of select="$meta//*:titel/string()"/></title>
                 <xsl:if test="$meta//*:unternehmen | $meta//*:institution"><author><xsl:value-of select="string-join(($meta//*:unternehmen, $meta//*:institution)[. != ''], ' und ')"/></author></xsl:if>
             </xsl:when><xsl:otherwise>
-                <xsl:apply-templates select="p:Metadata/p:Title" />
-                <xsl:apply-templates select="p:Metadata/p:Creator" />
+                <xsl:apply-templates select="p2017:Metadata/p2017:Title|p2019:Metadata/p2019:Title" />
+                <xsl:apply-templates select="p2017:Metadata/p2017:Creator|p2019:Metadata/p2019:Title" />
             </xsl:otherwise></xsl:choose>
                 <editor xml:id="PC" role="#scholarly">
                     <persName ref="gnd:122339479">
@@ -131,7 +152,7 @@
                 </editor>
                 <editor xml:id="TV" role="#scholarly">
                     <persName>
-                        <surname full="yes">Vespers</surname>, <forename full="yes">Tim</forename>
+                        <surname full="yes">Vesper</surname>, <forename full="yes">Tim</forename>
                     </persName>
                 </editor>
                 <editor xml:id="AW" role="#technical">
@@ -147,6 +168,26 @@
                 <editor xml:id="BS" role="#technical">
                     <persName>
                         <surname>Spendrin</surname>, <forename>Benjamin</forename>
+                    </persName>
+                </editor>
+            <editor xml:id="BG" role="#technical">
+                    <persName>
+                        <surname>Gödde</surname>, <forename>Ben</forename>
+                    </persName>
+                </editor>
+              <editor xml:id="LM" role="#technical">
+                    <persName>
+                        <surname>Michel</surname>, <forename>Lisa</forename>
+                    </persName>
+                </editor>
+              <editor xml:id="AWt" role="#technical">
+                    <persName>
+                        <surname>Walther</surname>, <forename>Annika</forename>
+                    </persName>
+                </editor>
+              <editor xml:id="PW" role="#technical">
+                    <persName>
+                        <surname>Wolf</surname>, <forename>Paulina</forename>
                     </persName>
                 </editor>
             </titleStmt>
@@ -237,34 +278,34 @@
     </teiHeader><xsl:choose><xsl:when test="$directory_mode">
 <xsl:apply-templates mode="rootcopyFacs"/>
       </xsl:when><xsl:otherwise><xsl:if test="not($debug)">
-<xsl:apply-templates select="mets:mets | p:PcGts" mode="facs"/>
+<xsl:apply-templates select="mets:mets | p2017:PcGts | p2019:PcGts" mode="facs"/>
         </xsl:if></xsl:otherwise></xsl:choose>
     <text>
-        <body><xsl:choose><xsl:when test="$directory_mode"><xsl:apply-templates mode="rootcopyText"/></xsl:when><xsl:otherwise><xsl:apply-templates select="mets:mets | p:PcGts" mode="text"/></xsl:otherwise></xsl:choose>
+        <body><xsl:choose><xsl:when test="$directory_mode"><xsl:apply-templates mode="rootcopyText"/></xsl:when><xsl:otherwise><xsl:apply-templates select="mets:mets | p2017:PcGts | p2019:PcGts" mode="text"/></xsl:otherwise></xsl:choose>
         </body>
     </text>
 </TEI>
   </xsl:template>
 
   <xd:doc>
-    <xd:desc>If necessary, get all root nodes from other files for text construction</xd:desc>
+    <xd:desc>If necessary, get all root nodes from other files for facsimile construction</xd:desc>
   </xd:doc>
-  <xsl:template match="node()" mode="rootcopyText">
+  <xsl:template match="node()" mode="rootcopyFacs">
       <xsl:variable name="folderURI" select="resolve-uri('.',base-uri())"/>
       <xsl:for-each select="collection(concat($folderURI, '?select=*.xml;recurse=yes'))">
           <xsl:sort select="tokenize(document-uri(.), '/')[last()]"/>
-          <xsl:apply-templates select="//(mets:mets | p:PcGts)" mode="text"/>
+          <xsl:apply-templates select="//mets:mets | //p2017:PcGts | //p2019:PcGts" mode="facs"/>
       </xsl:for-each>
   </xsl:template>
 
   <xd:doc>
-    <xd:desc>If necessary, get all root nodes from other files for facsimile construction</xd:desc>
+    <xd:desc>If necessary, get all root nodes from other files for text construction</xd:desc>
   </xd:doc>
-  <xsl:template match="node()" mode="rootcopyFacs">
+  <xsl:template match="node()" mode="rootcopyText">
     <xsl:variable name="folderURI" select="resolve-uri('.',base-uri())"/>
     <xsl:for-each select="collection(concat($folderURI, '?select=*.xml;recurse=yes'))">
         <xsl:sort select="tokenize(document-uri(.), '/')[last()]"/>
-        <xsl:apply-templates select="//(mets:mets | p:PcGts)" mode="facs"/>
+        <xsl:apply-templates select="//mets:mets | //p2017:PcGts | //p2019:PcGts" mode="text"/>
     </xsl:for-each>
   </xsl:template>
 
@@ -272,16 +313,16 @@
   <xd:doc>
     <xd:desc>root element of single files, create text</xd:desc>
   </xd:doc>
-  <xsl:template match="mets:mets | p:PcGts" mode="text">
+  <xsl:template match="mets:mets | p2017:PcGts | p2019:PcGts" mode="text">
     <xsl:variable name="make_div">
       <div>
         <xsl:choose><xsl:when test="./local-name() eq 'mets'">
             <xsl:apply-templates select="mets:fileSec//mets:fileGrp[@ID='PAGEXML']/mets:file" mode="text">
-              <xsl:with-param name="numCurr" select="xs:integer(xstring:substring-before(p:Page/@imageFilename, '.png'))" tunnel="true" />
+              <xsl:with-param name="numCurr" select="xs:integer(xstring:substring-before(p2017:Page/@imageFilename | p2019:Page/@imageFilename, '.png'))" tunnel="true" />
             </xsl:apply-templates>
         </xsl:when><xsl:otherwise>
-            <xsl:apply-templates select="p:Page" mode="text">
-              <xsl:with-param name="numCurr" select="xs:integer(xstring:substring-before(p:Page/@imageFilename, '.png'))" tunnel="true" />
+            <xsl:apply-templates select="p2017:Page|p2019:Page" mode="text">
+              <xsl:with-param name="numCurr" select="xs:integer(xstring:substring-before(p2017:Page/@imageFilename | p2019:Page/@imageFilename, '.png'))" tunnel="true" />
             </xsl:apply-templates>
         </xsl:otherwise></xsl:choose>
       </div></xsl:variable>
@@ -294,13 +335,13 @@
   <xd:doc>
     <xd:desc>root element of single files, create facsimile</xd:desc>
   </xd:doc>
-  <xsl:template match="mets:mets | p:PcGts" mode="facs"><xsl:if test="not($debug)" xml:space="preserve">
+  <xsl:template match="mets:mets | p2017:PcGts | p2019:PcGts" mode="facs"><xsl:if test="not($debug)" xml:space="preserve">
     <facsimile><xsl:choose><xsl:when test="./local-name() eq 'mets'">
         <xsl:apply-templates select="mets:fileSec//mets:fileGrp[@ID='PAGEXML']/mets:file" mode="facsimile"/>
-    </xsl:when><xsl:otherwise><xsl:message select="concat('__Facsimile: Page ', xstring:substring-before(p:Page/@imageFilename, '.png'))"/>
-        <xsl:apply-templates select="p:Page" mode="facsimile">
-          <xsl:with-param name="numCurr" select="xs:integer(xstring:substring-before(p:Page/@imageFilename, '.png'))"  tunnel="true"/>
-          <xsl:with-param name="imageName" select="p:Page/@imageFilename"  tunnel="true"/>
+    </xsl:when><xsl:otherwise><xsl:message select="concat('__Facsimile: Page ', xstring:substring-before(p2017:Page/@imageFilename | p2019:Page/@imageFilename, '.png'))"/>
+        <xsl:apply-templates select="p2017:Page|p2019:Page" mode="facsimile">
+          <xsl:with-param name="numCurr" select="xs:integer(xstring:substring-before(p2017:Page/@imageFilename | p2019:Page/@imageFilename, '.png'))"  tunnel="true"/>
+          <xsl:with-param name="imageName" select="p2017:Page/@imageFilename | p2019:Page/@imageFilename"  tunnel="true"/>
         </xsl:apply-templates>
     </xsl:otherwise></xsl:choose></facsimile></xsl:if>
   </xsl:template>
@@ -363,7 +404,7 @@
     <xsl:variable name="file" select="document(mets:FLocat/@xlink:href, /)"/>
     <xsl:variable name="numCurr" select="@SEQ"/>
     
-    <xsl:apply-templates select="$file//p:Page" mode="facsimile">
+    <xsl:apply-templates select="$file//p2017:Page | $file//p2019:Page" mode="facsimile">
       <xsl:with-param name="imageName" select="substring-after(mets:FLocat/@xlink:href, '/')" />
       <xsl:with-param name="numCurr" select="$numCurr" tunnel="true" />
     </xsl:apply-templates>
@@ -376,7 +417,7 @@
     <xsl:variable name="file" select="document(mets:FLocat/@xlink:href, .)"/>
     <xsl:variable name="numCurr" select="@SEQ"/>
     
-    <xsl:apply-templates select="$file//p:Page" mode="text">
+    <xsl:apply-templates select="$file//p2017:Page | $file//p2019:Page" mode="text">
       <xsl:with-param name="numCurr" select="$numCurr" tunnel="true" />
     </xsl:apply-templates>
   </xsl:template>
@@ -393,17 +434,17 @@
       <xd:p>Numerus currens of the parent facsimile</xd:p>
     </xd:param>
   </xd:doc>
-  <xsl:template match="p:Page" mode="facsimile">
+  <xsl:template match="p2017:Page|p2019:Page" mode="facsimile">
     <xsl:param name="imageName" tunnel="true"/>
     <xsl:param name="numCurr" tunnel="true" />
-    <xsl:variable name="coords" select="tokenize(p:PrintSpace/p:Coords/@points, ' ')" />
+    <xsl:variable name="coords" select="tokenize(p2017:PrintSpace/p2017:Coords/@points | p2019:PrintSpace/p2019:Coords/@points, ' ')" />
     <xsl:variable name="type" select="substring-after(@imageFilename, '.')" />
     <!-- NOTE: up to now, lry and lry were mixed up. This is fixed here. -->
 <surface ulx="0" uly="0"
       lrx="{@imageWidth}" lry="{@imageHeight}"
       xml:id="facs_{$numCurr}" xml:space="preserve">
             <graphic url="{encode-for-uri(substring-before($imageName, '.'))||'.'||$type}" width="{@imageWidth}px" height="{@imageHeight}px"/>
-            <xsl:apply-templates select="p:PrintSpace | p:TextRegion | p:SeparatorRegion | p:GraphicRegion | p:TableRegion" mode="facsimile"/>
+            <xsl:apply-templates select="p2017:PrintSpace | p2019:PrintSpace | p2017:TextRegion | p2019:TextRegion | p2017:SeparatorRegion | p2019:SeparatorRegion | p2017:GraphicRegion | p2019:GraphicRegion | p2017:TableRegion | p2019:TableRegion" mode="facsimile"/>
 </surface>
   </xsl:template>
 
@@ -411,7 +452,7 @@
     <xd:desc>create the zones within facsimile/surface</xd:desc>
     <xd:param name="numCurr">Numerus currens of the current page</xd:param>
   </xd:doc>
-  <xsl:template match="p:PrintSpace | p:TextRegion | p:SeparatorRegion | p:GraphicRegion | p:TextLine" mode="facsimile">
+  <xsl:template match="p2017:PrintSpace | p2019:PrintSpace | p2017:TextRegion | p2019:TextRegion | p2017:SeparatorRegion | p2019:SeparatorRegion | p2017:GraphicRegion | p2019:GraphicRegion | p2017:TextLine | p2019:TextLine" mode="facsimile">
     <xsl:param name="numCurr" tunnel="true" />
     <xsl:variable name="renditionValue">
       <xsl:choose>
@@ -434,11 +475,11 @@
 <xsl:text>
         </xsl:text>
     </xsl:if>
-    <zone points="{p:Coords/@points}" rendition="{$renditionValue}">
+    <zone points="{p2017:Coords/@points | p2019:Coords/@points}" rendition="{$renditionValue}">
       <xsl:if test="$renditionValue != 'printspace'"><xsl:attribute name="xml:id"><xsl:value-of select="'facs_'||$numCurr||'_'||@id"/></xsl:attribute></xsl:if>
       <xsl:if test="@type"><xsl:if test="$renditionValue = 'TextRegion'"><xsl:attribute name="type">text</xsl:attribute></xsl:if><xsl:attribute name="subtype"><xsl:value-of select="@type"/></xsl:attribute></xsl:if>
       <xsl:if test="map:contains($custom, 'structure') and not(@type)"><xsl:attribute name="subtype" select="substring-after(substring-before(map:get($custom, 'structure'), ';'), ':')" /></xsl:if>
-        <xsl:apply-templates select="p:TextLine" mode="facsimile" />
+        <xsl:apply-templates select="p2017:TextLine | p2019:TextLine" mode="facsimile" />
         <xsl:if test="not($renditionValue= ('Line', 'Graphic', 'Separator', 'printspace', 'TableCell'))">
             <xsl:text>
 </xsl:text>
@@ -450,12 +491,12 @@
     <xd:desc>Create the zone for a table</xd:desc>
     <xd:param name="numCurr">Numerus currens of the current page</xd:param>
   </xd:doc>
-  <xsl:template match="p:TableRegion" mode="facsimile">
+  <xsl:template match="p2017:TableRegion | p2019:TableRegion" mode="facsimile">
     <xsl:param name="numCurr" tunnel="true" />
     
-    <zone points="{p:Coords/@points}" rendition="Table">
+    <zone points="{p2017:Coords/@points | p2019:Coords/@points}" rendition="Table">
       <xsl:attribute name="xml:id"><xsl:value-of select="'facs_'||$numCurr||'_'||@id"/></xsl:attribute>
-      <xsl:apply-templates select="p:TableCell//p:TextLine" mode="facsimile" />
+      <xsl:apply-templates select="p2017:TableCell//p2017:TextLine | p2019:TableCell//p2019:TextLine" mode="facsimile" />
     </zone>
   </xsl:template>
 
@@ -464,20 +505,20 @@
     <xd:param name="numCurr">Numerus currens of the current page</xd:param>
   </xd:doc>
   <!-- Templates for PAGE, text -->
-  <xsl:template match="p:Page" mode="text">
+  <xsl:template match="p2017:Page | p2019:Page" mode="text">
     <xsl:param name="numCurr" tunnel="true" />
     <pb facs="#facs_{$numCurr}" n="{$numCurr}" xml:id="img_{format-number($numCurr, '0000')}"/>
     <xsl:choose>
-      <xsl:when test="p:ReadingOrder/p:OrderedGroup/p:RegionRefIndexed/@regionRef">
+      <xsl:when test="p2017:ReadingOrder/p2017:OrderedGroup/p2017:RegionRefIndexed/@regionRef | p2019:ReadingOrder/p2019:OrderedGroup/p2019:RegionRefIndexed/@regionRef">
         <xsl:variable name="pg" select="." />
         <xsl:variable name="readingOrder">
-          <xsl:if test="$debug"><xsl:message><xsl:value-of select="'Reading Order enthält ' || count(p:ReadingOrder/p:OrderedGroup/p:RegionRefIndexed/@regionRef) || ' Elemente: ' || string-join(p:ReadingOrder/p:OrderedGroup/p:RegionRefIndexed/@regionRef, ', ')"/></xsl:message></xsl:if>
-          <xsl:value-of select="string-join(p:ReadingOrder/p:OrderedGroup/p:RegionRefIndexed/@regionRef, ' ')"/>
+          <xsl:if test="$debug"><xsl:message><xsl:value-of select="'Reading Order enthält ' || count(p2017:ReadingOrder/p2017:OrderedGroup/p2017:RegionRefIndexed/@regionRef | p2019:ReadingOrder/p2019:OrderedGroup/p2019:RegionRefIndexed/@regionRef) || ' Elemente: ' || string-join(p2017:ReadingOrder/p2017:OrderedGroup/p2017:RegionRefIndexed/@regionRef | p2019:ReadingOrder/p2019:OrderedGroup/p2019:RegionRefIndexed/@regionRef, ', ')"/></xsl:message></xsl:if>
+          <xsl:value-of select="string-join(p2017:ReadingOrder/p2017:OrderedGroup/p2017:RegionRefIndexed/@regionRef | p2019:ReadingOrder/p2019:OrderedGroup/p2019:RegionRefIndexed/@regionRef, ' ')"/>
         </xsl:variable>
         <xsl:variable name="orderedRegions" as="node()*">
           <xsl:for-each select="tokenize($readingOrder, ' ')">
             <xsl:variable name="t" select="."/>
-            <xsl:copy-of select="$pg/p:TextRegion[@id = $t] | $pg/p:SeparatorRegion[@id = $t] | $pg/p:GraphicRegion[@id = $t] | $pg/p:TableRegion[@id = $t]"/>
+            <xsl:copy-of select="$pg/p2017:TextRegion[@id = $t] | $pg/p2019:TextRegion[@id = $t] | $pg/p2017:SeparatorRegion[@id = $t] | $pg/p2019:SeparatorRegion[@id = $t] | $pg/p2017:GraphicRegion[@id = $t] | $pg/p2019:GraphicRegion[@id = $t] | $pg/p2017:TableRegion[@id = $t] | $pg/p2019:TableRegion[@id = $t]"/>
           </xsl:for-each>
         </xsl:variable>
         
@@ -486,7 +527,7 @@
           <xsl:apply-templates select="." mode="text"/>
         </xsl:for-each>
       </xsl:when><xsl:otherwise>
-        <xsl:apply-templates select="p:TextRegion | p:SeparatorRegion | p:GraphicRegion | p:TableRegion" mode="text" />
+        <xsl:apply-templates select="p2017:TextRegion | p2019:TextRegion | p2017:SeparatorRegion | p2019:SeparatorRegion | p2017:GraphicRegion | p2019:GraphicRegion | p2017:TableRegion | p2019:TableRegion" mode="text" />
       </xsl:otherwise></xsl:choose>
   </xsl:template>
 
@@ -513,7 +554,7 @@
     </xd:p></xd:desc>
     <xd:param name="numCurr"/>
   </xd:doc>
-  <xsl:template match="p:TextRegion" mode="text">
+  <xsl:template match="p2017:TextRegion | p2019:TextRegion" mode="text">
     <xsl:param name="numCurr" tunnel="true" />
     <xsl:variable name="custom" as="map(*)">
       <xsl:choose>
@@ -529,51 +570,51 @@
     <xsl:choose>
       <xsl:when test="@type = 'heading'">
         <head facs="#facs_{$numCurr}_{@id}">
-          <xsl:apply-templates select="p:TextLine" />
+          <xsl:apply-templates select="p2017:TextLine | p2019:TextLine" />
         </head>
       </xsl:when>
       <xsl:when test="@type = 'caption'">
         <figure>
-          <head facs="#facs_{$numCurr}_{@id}"><xsl:apply-templates select="p:TextLine" /></head>
+          <head facs="#facs_{$numCurr}_{@id}"><xsl:apply-templates select="p2017:TextLine | p2019:TextLine" /></head>
         </figure>
       </xsl:when>
       <xsl:when test="@type = 'header'">
-        <fw type="header" place="top" facs="#facs_{$numCurr}_{@id}"><xsl:apply-templates select="p:TextLine" /></fw>
+        <fw type="header" place="top" facs="#facs_{$numCurr}_{@id}"><xsl:apply-templates select="p2017:TextLine | p2019:TextLine" /></fw>
       </xsl:when>
       <xsl:when test="@type = 'footer'">
-        <fw type="header" place="bottom" facs="#facs_{$numCurr}_{@id}"><xsl:apply-templates select="p:TextLine" /></fw>
+        <fw type="header" place="bottom" facs="#facs_{$numCurr}_{@id}"><xsl:apply-templates select="p2017:TextLine | p2019:TextLine" /></fw>
       </xsl:when>
       <xsl:when test="@type = 'catch-word'">
-        <fw type="catch" place="bottom" facs="#facs_{$numCurr}_{@id}"><xsl:apply-templates select="p:TextLine" /></fw>
+        <fw type="catch" place="bottom" facs="#facs_{$numCurr}_{@id}"><xsl:apply-templates select="p2017:TextLine | p2019:TextLine" /></fw>
       </xsl:when>
       <xsl:when test="@type = 'signature-mark'">
-        <fw place="bottom" type="sig" facs="#facs_{$numCurr}_{@id}"><xsl:apply-templates select="p:TextLine" /></fw>
+        <fw place="bottom" type="sig" facs="#facs_{$numCurr}_{@id}"><xsl:apply-templates select="p2017:TextLine | p2019:TextLine" /></fw>
       </xsl:when>
       <xsl:when test="@type = 'marginalia'">
-        <note place="[direction]" facs="#facs_{$numCurr}_{@id}"><xsl:apply-templates select="p:TextLine" /></note>
+        <note place="[direction]" facs="#facs_{$numCurr}_{@id}"><xsl:apply-templates select="p2017:TextLine | p2019:TextLine" /></note>
       </xsl:when>
       <xsl:when test="@type = 'footnote'">
-        <note place="bottom" n="[footnote reference]" facs="#facs_{$numCurr}_{@id}"><xsl:apply-templates select="p:TextLine" /></note>
+        <note place="bottom" n="[footnote reference]" facs="#facs_{$numCurr}_{@id}"><xsl:apply-templates select="p2017:TextLine | p2019:TextLine" /></note>
       </xsl:when>
       <xsl:when test="@type = 'footnote-continued'">
-        <note place="bottom" n="[footnote-continued reference]" facs="#facs_{$numCurr}_{@id}"><xsl:apply-templates select="p:TextLine" /></note>
+        <note place="bottom" n="[footnote-continued reference]" facs="#facs_{$numCurr}_{@id}"><xsl:apply-templates select="p2017:TextLine | p2019:TextLine" /></note>
       </xsl:when>
       <xsl:when test="@type = ('other', 'paragraph')">
         <p facs="#facs_{$numCurr}_{@id}">
-          <xsl:apply-templates select="p:TextLine" />
+          <xsl:apply-templates select="p2017:TextLine | p2019:TextLine" />
         </p>
       </xsl:when>
       <xsl:when test="@type = 'credit'">
           <div type="paratext" facs="#facs_{$numCurr}_{@id}">
               <p facs="#facs_{$numCurr}_{@id}">
-                <xsl:apply-templates select="p:TextLine" />
+                <xsl:apply-templates select="p2017:TextLine | p2019:TextLine" />
               </p>
           </div>
       </xsl:when>
       <!-- the fallback option should be a semantically open element such as <ab> -->
       <xsl:otherwise>
         <ab facs="#facs_{$numCurr}_{@id}" type="{@type}{$custom?structure?type}">
-          <xsl:apply-templates select="p:TextLine" />
+          <xsl:apply-templates select="p2017:TextLine | p2019:TextLine" />
         </ab>
       </xsl:otherwise>
     </xsl:choose>
@@ -583,12 +624,12 @@
     <xd:desc>create a table</xd:desc>
     <xd:param name="numCurr"/>
   </xd:doc>
-  <xsl:template match="p:TableRegion" mode="text">
+  <xsl:template match="p2017:TableRegion | p2019:TableRegion" mode="text">
     <xsl:param name="numCurr" tunnel="true" />
     <xsl:text>
       </xsl:text>
     <table facs="#facs_{$numCurr}_{@id}">
-      <xsl:for-each-group select="p:TableCell" group-by="@row">
+      <xsl:for-each-group select="p2017:TableCell | p2019:TableCell" group-by="@row">
         <xsl:sort select="@col" />
         <xsl:text>
         </xsl:text>
@@ -603,7 +644,7 @@
     <xd:desc>create table cells</xd:desc>
     <xd:param name="numCurr"/>
   </xd:doc>
-  <xsl:template match="p:TableCell">
+  <xsl:template match="p2017:TableCell | p2019:TableCell">
     <xsl:param name="numCurr" tunnel="true" />
     <xsl:text>
           </xsl:text>
@@ -615,7 +656,7 @@
         <xsl:value-of select="number((xs:boolean(@rightBorderVisible), false())[1])" />
         <xsl:value-of select="number((xs:boolean(@bottomBorderVisible), false())[1])" />
       </xsl:attribute>
-      <xsl:apply-templates select="p:TextLine" />
+      <xsl:apply-templates select="p2017:TextLine | p2019:TextLine" />
     </cell>
   </xsl:template>
   <xd:doc>
@@ -683,10 +724,10 @@
     <xd:desc>Converts one line of PAGE to one line of TEI</xd:desc>
     <xd:param name="numCurr">Numerus currens, to be tunneled through from the page level</xd:param>
   </xd:doc>
-  <xsl:template match="p:TextLine">
+  <xsl:template match="p2017:TextLine | p2019:TextLine">
     <xsl:param name="numCurr" tunnel="true" />
-    <xsl:variable name="indexToUse" select="xs:string(min(p:TextEquiv/@index))"/>
-    <xsl:variable name="text" select="p:TextEquiv[@index=$indexToUse]/p:Unicode"/>
+    <xsl:variable name="indexToUse" select="xs:string(min(p2017:TextEquiv/@index | p2019:TextEquiv/@index))"/>
+    <xsl:variable name="text" select="p2017:TextEquiv[@index=$indexToUse]/p2017:Unicode | p2019:TextEquiv[@index=$indexToUse]/p2019:Unicode"/>
     <xsl:if test="$debug">
       <xsl:message select="concat('input line: ', $text)"/>
     </xsl:if>
@@ -957,7 +998,7 @@
   <xd:doc>
     <xd:desc>Leave out possibly unwanted parts</xd:desc>
   </xd:doc>
-  <xsl:template match="p:Metadata" mode="text" />
+  <xsl:template match="p2017:Metadata | p2019:Metadata" mode="text" />
 
   <xd:doc>
     <xd:desc>Parse the content of an attribute such as @custom into a map.</xd:desc>
